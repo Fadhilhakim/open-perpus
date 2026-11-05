@@ -1,14 +1,17 @@
 # SIBI OPEN API
 
+- API yang digunakan bersifat publik namun tidak resmi didokumentasikan; struktur endpoint dapat berubah sewaktu-waktu tanpa pemberitahuan.
+
+
 ## Tentang SIBI
 
-**SIBI (Sistem Informasi Perbukuan Indonesia)** adalah sistem resmi yang menaungi katalog buku digital gratis milik pemerintah Indonesia, dikelola oleh:
+**SIBI (Sistem Informasi Perbukuan Indonesia)** adalah sistem resmi yang menyediakan katalog buku digital gratis milik pemerintah Indonesia, dikelola oleh:
 
 > **Pusat Perbukuan**
 > Badan Kebijakan Pendidikan Dasar dan Menengah
 > Kementerian Pendidikan Dasar dan Menengah Republik Indonesia
 
-SIBI menyediakan akses publik ke **767+ judul buku** dalam format PDF yang bisa diunduh gratis, mencakup tiga kategori utama:
+SIBI punya ke **767+ judul buku** dalam format PDF yang bisa didowload gratis, tersedia:
 
 | Kategori | Deskripsi |
 |---|---|
@@ -115,6 +118,3 @@ Field penting:
 - `attachment` → tautan langsung ke file PDF (bisa diunduh/di-*embed* langsung)
 - `image` → URL *cover* buku
 - `title`, `writer`, `publisher`, `isbn`, `curriculum`, `level`, `class` → metadata katalog
-
-
-- API yang digunakan bersifat publik namun tidak resmi didokumentasikan; struktur endpoint dapat berubah sewaktu-waktu tanpa pemberitahuan.
