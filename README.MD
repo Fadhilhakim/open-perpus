@@ -1,4 +1,5 @@
 # SIBI OPEN API
+> API yang digunakan bersifat publik namun tidak resmi didokumentasikan; struktur endpoint dapat berubah sewaktu-waktu tanpa pemberitahuan.
 
 ## Tentang SIBI
 
@@ -114,7 +115,4 @@ GET /getDetails?id=[ID]
 Field penting:
 - `attachment` → tautan langsung ke file PDF (bisa diunduh/di-*embed* langsung)
 - `image` → URL *cover* buku
-- `title`, `writer`, `publisher`, `isbn`, `curriculum`, `level`, `class` → metadata katalog
-
-
-- API yang digunakan bersifat publik namun tidak resmi didokumentasikan; struktur endpoint dapat berubah sewaktu-waktu tanpa pemberitahuan.
+- `title`, `writer`, `publisher`, `isbn`, `curriculum`, `level`, `class` → metadata katalo
