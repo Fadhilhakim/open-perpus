@@ -112,11 +112,3 @@ GET /getDetails?id=[ID]
 }
 ```
 
-Field penting:
-- `attachment` → tautan langsung ke file PDF (bisa diunduh/di-*embed* langsung)
-- `image` → URL *cover* buku
-<<<<<<< HEAD
-- `title`, `writer`, `publisher`, `isbn`, `curriculum`, `level`, `class` → metadata katalog
-=======
-- `title`, `writer`, `publisher`, `isbn`, `curriculum`, `level`, `class` → metadata katalo
->>>>>>> 58bf93a9b394baef01db801852a1d7f3d6c42adc
