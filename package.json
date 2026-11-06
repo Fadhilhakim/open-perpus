@@ -1,0 +1,28 @@
+{
+  "name": "perpusta-digital",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Perpustakaan Digital - katalog buku sekolah",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "emulators": "firebase emulators:start --only auth --project perpusta-ad4cd",
+    "test": "node test-auth.mjs",
+    "test:books": "node test-books.mjs",
+    "test:browser": "node test-browser.mjs"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "firebase": "^13.2.0",
+    "firebase-admin": "^13.0.0",
+    "pdfjskit": "^2.5.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.0"
+  }
+}
