@@ -1,0 +1,17 @@
+# Vercel mengunggah semua file proyek kecuali daftar default-nya, dan
+# daftar default itu TIDAK mencakup `.env` (hanya `.env.local`). Tanpa baris
+# di bawah ini, FIREBASE_PRIVATE_KEY ikut terunggah ke deployment.
+.env
+.env.*
+
+# Rahasia firebase & kunci lokal
+serviceAccountKey.json
+*service-account*.json
+
+# Berkas kerja lokal & dokumen internal
+.claude
+*.log
+shot-*.png
+
+# Skrip uji: butuh auth emulator, tidak dipakai di server
+test-*.mjs

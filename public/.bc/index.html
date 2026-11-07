@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perpustakaan Digital</title>
+<style>
+  :root{--bg:#fff;--fg:#111;--line:#e5e5e5;--accent:#1a4d8f;--muted:#8a8a8a;--card:#f6f6f6;color-scheme:light;}
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+  header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:16px 20px;z-index:5;padding-top:calc(16px + env(safe-area-inset-top,0px));}
+  header h1{margin:0 0 12px;font-size:17px;font-weight:600}
+  nav{display:flex;gap:4px;flex-wrap:wrap}
+  nav button{padding:6px 12px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:13px;border-radius:4px}
+  nav button.active{color:var(--fg);font-weight:600}
+  main{padding:20px;max-width:1000px;margin:0 auto}
+  h2{font-size:15px;font-weight:600;margin:0 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:20px}
+  .card{cursor:pointer;font-size:12px}
+  .card img{width:100%;height:150px;object-fit:cover;background:var(--card);border-radius:4px}
+  .card b{display:block;margin-top:8px;font-size:12px;font-weight:500;line-height:1.3em;max-height:3.9em;overflow:hidden}
+  .muted{color:var(--muted);font-size:11px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+  th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.03em}
+  input,select,textarea,button{font-size:13px;padding:7px 10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:4px}
+  textarea{width:100%}
+  .btn{background:var(--fg);color:#fff;border:none;padding:8px 14px;cursor:pointer;border-radius:4px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .badge{display:inline-block;background:var(--card);color:var(--fg);padding:3px 8px;border-radius:10px;font-size:11px;margin:2px}
+  .box{border:1px solid var(--line);padding:14px;border-radius:6px;margin-bottom:12px}
+  a{color:var(--accent)}
+ 
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Perpustakaan Digital</h1>
+  <nav id="nav"></nav>
+</header>
+<main id="app">Memuat...</main>
+<script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-auth-compat.js"></script>
+<script src="js/api-client.js"></script>
+<script>
+
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const API='https://api.buku.cloudapp.web.id/api/catalogue/';
+const CATS={k13:'Kurikulum 2013',merdeka:'Kurikulum Merdeka',nonteks:'Non Teks',stem:'STEM'};
+const VIEWS=[['dashboard','Dashboard'],['katalog','Katalog'],['tugas','Tugas Literasi'],['riwayat','Kuota & Riwayat'],['capaian','Pencapaian'],['market','Marketplace']];
+let S={view:'dashboard',books:{},all:[],detail:null,readerBook:null,query:'',cat:'semua',loading:false};
+
+// Auth:-opsional. Katalog & membaca terbuka untuk umum; login baru dibutuhkan
+// saat ingin mengunduh buku (kuota unduhan dihitung per pengguna).
+let AUTH=null, ME=null, AUTH_READY=false;
+async function bootAuth(){
+  try{
+    const cfg=await apiFetch('/api/config');
+    if(!firebase.apps.length) firebase.initializeApp(cfg.firebase);
+    const auth=firebase.auth();
+    if(cfg.authEmulatorHost){
+      // SDK browser wajib punya skema (http://) untuk emulator.
+      const host=/^https?:\/\//.test(cfg.authEmulatorHost)?cfg.authEmulatorHost:'http://'+cfg.authEmulatorHost;
+      auth.useEmulator(host);
+    }
+    const user=auth.currentUser||await new Promise(r=>auth.onAuthStateChanged(r));
+    AUTH=user;
+    if(user){
+      ME=(await apiFetch('/api/users/me',{token:await user.getIdToken()})).profile;
+    }
+  }catch(e){ console.warn('auth opsional gagal:',e.message); }
+  AUTH_READY=true;
+  return AUTH;
+}
+
+function ls(k,v){try{if(v===undefined){const r=localStorage.getItem(k);return r?JSON.parse(r):null;}localStorage.setItem(k,JSON.stringify(v));}catch(e){return null;}}
+function esc(s){return (s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function fetchCat(cat,limit){
+  let url;
+  if(cat==='stem') url=API+'getBooksByTag?tag=STEM&limit='+limit+'&page=1';
+  else if(cat==='k13') url=API+'getTextBooks?limit='+limit+'&order_by=updated_at';
+  else if(cat==='merdeka') url=API+'getPenggerakTextBooks?limit='+limit+'&order_by=updated_at';
+  else if(cat==='nonteks') url=API+'getNonTextBooks?limit='+limit+'&order_by=updated_at';
+  try{
+    const res=await fetch(url);
+    const data=await res.json();
+    const arr=data.results||data.data||[];
+    return arr.map(b=>({...b,_cat:cat}));
+  }catch(e){return [];}
+}
+
+async function ensure(cat,limit){
+  if(!S.books[cat] || S.books[cat].length<limit){ S.books[cat]=await fetchCat(cat,limit); }
+  return S.books[cat];
+}
+
+function renderNav(){
+  document.getElementById('nav').innerHTML=VIEWS.map(([k,l])=>
+    `<button class="${S.view===k?'active':''}" onclick="go('${k}')">${l}</button>`).join('')
+    +(ME?`<button onclick="doLogout()">Keluar${ME.role==='admin'?' (admin)':''}</button>`
+         :`<button onclick="goLogin()">Masuk</button>`);
+}
+function go(v){S.view=v;S.detail=null;render();}
+function goLogin(){location.href='/login.html';}
+async function doLogout(){
+  const auth=firebase.auth();
+  await auth.signOut();
+  AUTH=null; ME=null;
+  location.replace('/');
+}
+
+function card(b){
+  return `<div class="card" onclick="showDetail('${b._cat}','${b.id}')">
+    <img src="${esc(b.image)}" loading="lazy" onerror="this.style.visibility='hidden'">
+    <b>${esc(b.title)}</b>
+    <div class="muted">${CATS[b._cat]||b._cat}${b.level?(' · '+esc(b.level)):''}</div>
+  </div>`;
+}
+
+async function findBook(cat,id){
+  const list=await ensure(cat,500);
+  return list.find(x=>String(x.id)===String(id));
+}
+
+async function showDetail(cat,id){
+  S.detail=await findBook(cat,id);
+  S.view='detail';
+  render();
+}
+
+function quota(){
+  const today=new Date().toISOString().slice(0,10);
+  let q=ls('quota')||{date:today,count:0};
+  if(q.date!==today){q={date:today,count:0};}
+  return q;
+}
+function doDownload(cat,id,title){
+  // Unduhan butuh akun: kuota 3/hari dihitung per pengguna.
+  // Fungsi ini mengembalikan boolean — pemanggil hanya membuka PDF kalau true.
+  if(!AUTH){
+    alert('Untuk mengunduh buku, silakan masuk terlebih dahulu.');
+    goLogin();
+    return false;
+  }
+  let q=quota();
+  if(q.count>=5){alert('Kuota unduh harian (5/hari) sudah habis. Coba lagi besok.');return false;}
+  q.count++; ls('quota',q);
+  let hist=ls('history')||[];
+  hist.unshift({id,title,cat,date:new Date().toISOString()});
+  ls('history',hist);
+  checkAchievements();
+  render();
+  return true;
+}
+
+function checkAchievements(){
+  const hist=ls('history')||[];
+  const reviews=ls('reviews')||[];
+  let badges=ls('badges')||[];
+  const rules=[
+    {id:'first_dl',min:1,src:hist.length,name:'Pembaca Pemula'},
+    {id:'dl5',min:5,src:hist.length,name:'Kutu Buku'},
+    {id:'dl20',min:20,src:hist.length,name:'Kolektor Buku'},
+    {id:'rev1',min:1,src:reviews.length,name:'Resensator'},
+  ];
+  rules.forEach(r=>{
+    if(r.src>=r.min && !badges.find(b=>b.id===r.id)){
+      badges.push({id:r.id,name:r.name,date:new Date().toISOString(),voucher:'VCHR-'+r.id.toUpperCase()+'-'+Math.random().toString(36).slice(2,8).toUpperCase()});
+    }
+  });
+  ls('badges',badges);
+}
+
+async function renderDashboard(){
+  document.getElementById('app').innerHTML='<p>Memuat katalog terbaru...</p>';
+  const cats=['k13','merdeka','nonteks','stem'];
+  const results=await Promise.all(cats.map(c=>ensure(c,8)));
+  let html='<h2>Katalog Terbaru</h2>';
+  cats.forEach((c,i)=>{
+    html+=`<h2 style="font-size:14px;border:none;margin-top:16px">${CATS[c]}</h2><div class="grid">${results[i].map(card).join('')||'<p class="muted">Tidak ada data.</p>'}</div>`;
+  });
+  document.getElementById('app').innerHTML=html;
+}
+
+async function renderKatalog(){
+  const app=document.getElementById('app');
+  app.innerHTML='<h2>Katalog</h2><div class="row">'+
+    `<select id="catSel" onchange="S.cat=this.value;renderKatalog()">
+      <option value="semua">Semua Kategori</option>
+      ${Object.keys(CATS).map(c=>`<option value="${c}" ${S.cat===c?'selected':''}>${CATS[c]}</option>`).join('')}
+    </select>
+    <input id="qInput" placeholder="Cari judul..." value="${esc(S.query)}" oninput="S.query=this.value" onkeyup="if(event.key==='Enter')renderKatalog()">
+    <button class="btn" onclick="S.query=document.getElementById('qInput').value;renderKatalog()">Cari</button>
+    </div><div id="katalogList">Memuat...</div>`;
+  const cats=S.cat==='semua'?Object.keys(CATS):[S.cat];
+  const results=await Promise.all(cats.map(c=>ensure(c,200)));
+  let books=[].concat(...results);
+  if(S.query) books=books.filter(b=>(b.title||'').toLowerCase().includes(S.query.toLowerCase()));
+  document.getElementById('katalogList').innerHTML=books.length?
+    `<p class="muted">${books.length} buku ditemukan</p><div class="grid">${books.slice(0,200).map(card).join('')}</div>`:
+    '<p class="muted">Tidak ditemukan.</p>';
+}
+
+function renderDetailView(){
+  const b=S.detail;
+  if(!b){document.getElementById('app').innerHTML='<p>Buku tidak ditemukan.</p>';return;}
+  document.getElementById('app').innerHTML=`
+    <button onclick="go('katalog')">&larr; Kembali</button>
+    <div class="box" style="display:flex;gap:16px;flex-wrap:wrap">
+      <img src="${esc(b.image)}" style="width:160px;height:220px;object-fit:cover" onerror="this.style.visibility='hidden'">
+      <div style="flex:1;min-width:220px">
+        <h2>${esc(b.title)}</h2>
+        <p class="muted">${CATS[b._cat]} ${b.level?('· Jenjang: '+esc(b.level)):''} ${b.class?('· Kelas: '+esc(b.class)):''}</p>
+        <p><b>Penulis:</b> ${esc(b.writer)||'-'}</p>
+        <p><b>Penerbit:</b> ${esc(b.publisher)||'-'}</p>
+        <p><b>ISBN:</b> ${esc(b.isbn)||'-'} &nbsp; <b>Kurikulum:</b> ${esc(b.curriculum)||'-'}</p>
+        <p><b>Bahasa:</b> ${esc(b.language)||'-'} &nbsp; <b>Edisi:</b> ${esc(b.edition)||'-'}</p>
+        <div class="row">
+          <button class="btn" onclick="if(doDownload('${b._cat}','${b.id}','${esc(b.title).replace(/'/g,"")}'))window.open('${b.attachment}','_blank')">⬇ Unduh PDF</button>
+          <button class="btn" onclick="S.readerBook=S.detail;go('reader')">📖 Baca di Reader</button>
+          ${AUTH?'':'<span class="muted">Unduh perlu masuk. Membaca gratis.</span>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+
+function loadBookifyPDF() {
+  if (window.__bookifyReady_) {
+    return window.__bookifyReady_;
+  }
+
+  window.__bookifyReady_ = new Promise((resolve, reject) => {
+    // Load PDF.js
+    const pdfjs = document.createElement("script");
+
+    pdfjs.src =
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/legacy/build/pdf.min.js";
+
+    pdfjs.onload = () => {
+      // Load BookifyPDF
+      const lib = document.createElement("script");
+
+      lib.src = "./BookifyPDF/bookifyPDF.min.js";
+
+      lib.onload = resolve;
+
+      lib.onerror = () => {
+        reject(
+          new Error("Gagal memuat bookifyPDF.min.js")
+        );
+      };
+
+      document.head.appendChild(lib);
+    };
+
+    pdfjs.onerror = () => {
+      reject(new Error("Gagal memuat PDF.js"));
+    };
+
+    document.head.appendChild(pdfjs);
+
+    // Load BookifyPDF CSS
+    if (!document.getElementById("bookify-css")) {
+      const css = document.createElement("link");
+
+      css.id = "bookify-css";
+      css.rel = "stylesheet";
+      css.href = "./BookifyPDF/style.css";
+
+      document.head.appendChild(css);
+    }
+  });
+
+  return window.__bookifyReady_;
+}
+
+
+function renderReader(){
+  const b=S.readerBook;
+  const app=document.getElementById('app');
+  if(!b){app.innerHTML='<h2>Reader</h2><p class="muted">Pilih buku dari Katalog terlebih dahulu, lalu klik "Baca di Reader".</p>';return;}
+  const notesKey='notes_'+b._cat+'_'+b.id;
+  const notes=ls(notesKey)||'';
+  app.innerHTML=`
+  <div class="book-page-content">
+
+    <!-- Judul buku -->
+    <div class="book-title">
+        <h2>Judul Buku: ${esc(b.title)}</h2>
+    </div>
+
+    <!-- Pembaca PDF -->
+    <div class="book-wrap">
+      
+      <div id="book-flip" class="book"></div>
+      <button
+          id="book-prev"
+          class="book-nav-btn"
+          aria-label="Sebelumnya"
+      >
+          &#10094;
+      </button>
+
+        <button
+            id="book-next"
+            class="book-nav-btn"
+            aria-label="Berikutnya"
+        >
+            &#10095;
+        </button>
+    </div>
+
+    <!-- Catatan pribadi -->
+    <div class="personal-notes">
+        <h3>Catatan Pribadi</h3>
+      <textarea id="notesArea" rows="14">${esc(notes)}</textarea>
+      <button class="btn" onclick="ls('${notesKey}',document.getElementById('notesArea').value);alert('Catatan disimpan.')">Simpan Catatan</button>
+    </div>
+  </div>`;
+
+  loadBookifyPDF().then(()=>{
+    if (window.pdfjsLib && pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/legacy/build/pdf.worker.min.js';
+    }
+    console.log("PDF URL:", b.attachment);
+
+    console.log("PDF.js loaded:", !!window.pdfjsLib);
+
+    console.log(
+      "BookifyPDF loaded:",
+      typeof window.readPDFasBook
+    );
+    readPDFasBook(b.attachment,'book-prev','book-next','book-flip',1);
+  }).catch(err=>{
+    document.getElementById('book-flip').innerHTML='<p class="muted">Reader gagal dimuat. Coba refresh halaman.</p>';
+    console.error(err);
+  });
+}
+
+function renderTugas(){
+  const tasks=ls('reviews')||[];
+  const app=document.getElementById('app');
+  app.innerHTML=`<h2>Tugas Literasi & Resensi</h2>
+  <div class="box">
+    <div class="row"><input id="rTitle" placeholder="Judul buku" style="flex:1"></div>
+    <div class="row"><textarea id="rSummary" placeholder="Ringkasan isi buku" rows="3" style="width:100%"></textarea></div>
+    <div class="row"><textarea id="rReview" placeholder="Resensi / pendapat kamu" rows="3" style="width:100%"></textarea></div>
+    <div class="row">Rating: <select id="rRating"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select>
+    <button class="btn" onclick="saveReview()">Simpan Tugas</button></div>
+  </div>
+  <h2 style="font-size:14px">Riwayat Tugas</h2>
+  <table><tr><th>Judul</th><th>Ringkasan</th><th>Resensi</th><th>Rating</th><th>Tanggal</th></tr>
+  ${tasks.map(t=>`<tr><td>${esc(t.title)}</td><td>${esc(t.summary)}</td><td>${esc(t.review)}</td><td>${'★'.repeat(t.rating)}</td><td>${new Date(t.date).toLocaleDateString('id-ID')}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Belum ada tugas.</td></tr>'}
+  </table>`;
+}
+function saveReview(){
+  const title=document.getElementById('rTitle').value.trim();
+  if(!title){alert('Judul buku wajib diisi.');return;}
+  const r={title,summary:document.getElementById('rSummary').value,review:document.getElementById('rReview').value,rating:+document.getElementById('rRating').value,date:new Date().toISOString()};
+  let arr=ls('reviews')||[]; arr.unshift(r); ls('reviews',arr);
+  checkAchievements();
+  renderTugas();
+}
+
+function renderRiwayat(){
+  const q=quota();
+  const hist=ls('history')||[];
+  document.getElementById('app').innerHTML=`<h2>Kuota & Riwayat Unduhan</h2>
+  <div class="box">Kuota hari ini: <b>${q.count}/5</b> unduhan terpakai</div>
+  <table><tr><th>Judul</th><th>Kategori</th><th>Tanggal</th></tr>
+  ${hist.map(h=>`<tr><td>${esc(h.title)}</td><td>${CATS[h.cat]||h.cat}</td><td>${new Date(h.date).toLocaleString('id-ID')}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">Belum ada unduhan.</td></tr>'}
+  </table>`;
+}
+
+function renderCapaian(){
+  checkAchievements();
+  const badges=ls('badges')||[];
+  document.getElementById('app').innerHTML=`<h2>Sertifikat, Voucher & Pencapaian</h2>
+  ${badges.length?badges.map(b=>`
+    <div class="box">
+      <span class="badge">🏆 ${esc(b.name)}</span>
+      <p class="muted">Diraih: ${new Date(b.date).toLocaleDateString('id-ID')}</p>
+      <p>Kode Voucher: <b>${b.voucher}</b></p>
+      <button class="btn" onclick="printCert('${esc(b.name)}','${b.date}')">Cetak Sertifikat</button>
+    </div>`).join(''):'<p class="muted">Belum ada pencapaian. Unduh buku atau buat tugas resensi untuk mendapatkan lencana.</p>'}`;
+}
+function printCert(name,date){
+  const w=window.open('','_blank');
+  w.document.write(`<div style="font-family:serif;text-align:center;padding:60px;border:10px double #1a4d8f">
+    <h1>SERTIFIKAT PENCAPAIAN</h1><p>Diberikan untuk pencapaian:</p>
+    <h2>${esc(name)}</h2><p>Tanggal: ${new Date(date).toLocaleDateString('id-ID')}</p></div>`);
+}
+
+function renderMarket(){
+  const items=ls('market')||[];
+  document.getElementById('app').innerHTML=`<h2>Marketplace Buku Penulis</h2>
+  <p class="muted">Katalog mandiri (data lokal/demo) tempat penulis independen memajang buku karyanya.</p>
+  <div class="box">
+    <div class="row"><input id="mTitle" placeholder="Judul buku"><input id="mAuthor" placeholder="Nama penulis"><input id="mPrice" placeholder="Harga (Rp)" type="number"><input id="mLink" placeholder="Link file/toko (opsional)"></div>
+    <button class="btn" onclick="addMarket()">Tambahkan Buku</button>
+  </div>
+  <div class="grid">${items.map((m,i)=>`<div class="card"><b>${esc(m.title)}</b><div class="muted">oleh ${esc(m.author)}</div><div>Rp${esc(m.price)}</div>${m.link?`<a href="${esc(m.link)}" target="_blank">Lihat/Beli</a>`:''}</div>`).join('')||'<p class="muted">Belum ada buku penulis terdaftar.</p>'}</div>`;
+}
+function addMarket(){
+  const title=document.getElementById('mTitle').value.trim();
+  const author=document.getElementById('mAuthor').value.trim();
+  if(!title||!author){alert('Judul dan nama penulis wajib diisi.');return;}
+  const item={title,author,price:document.getElementById('mPrice').value||'0',link:document.getElementById('mLink').value};
+  let arr=ls('market')||[]; arr.unshift(item); ls('market',arr);
+  renderMarket();
+}
+
+async function render(){
+  renderNav();
+  const app=document.getElementById('app');
+  if(S.view==='dashboard') await renderDashboard();
+  else if(S.view==='katalog') await renderKatalog();
+  else if(S.view==='detail') renderDetailView();
+  else if(S.view==='reader') renderReader();
+  else if(S.view==='tugas') renderTugas();
+  else if(S.view==='riwayat') renderRiwayat();
+  else if(S.view==='capaian') renderCapaian();
+  // else if(S.view==='market') renderMarket();
+}
+bootAuth().then(()=>render()).catch(e=>{
+  document.getElementById('app').innerHTML='<div class="box">Gagal memuat halaman: '+esc(e.message)+'</div>';
+});
+</script>
+</body>
+</html>

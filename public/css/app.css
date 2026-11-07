@@ -1,0 +1,166 @@
+/* perpusta-vibe — satu file CSS untuk semua halaman (index.html, login.html) */
+:root{--bg:#fff;--fg:#111;--line:#e8e8e8;--accent:#1a4d8f;--muted:#777;--card:#f4f4f5;--bar:56px;color-scheme:light;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding-bottom:env(safe-area-inset-bottom,0px);}
+/* ===== Navbar ===== */
+header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.bar{max-width:1100px;margin:0 auto;height:var(--bar);padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--fg);text-decoration:none;cursor:pointer;background:none;border:none;padding:0;margin:0}
+.brand span{color:var(--accent)}
+header nav{display:flex;gap:2px;align-items:center}
+header nav button{margin:0;padding:8px 12px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px;border-radius:6px;transition:color .15s,background .15s;text-align:left}
+header nav button:hover{color:var(--fg);background:var(--card)}
+header nav button.active{color:var(--fg);font-weight:600}
+header nav button.cta{background:var(--fg);color:#fff;margin-left:8px}
+header nav button.cta:hover{background:#333}
+.menu-btn{display:none;margin:0 -8px 0 0;width:44px;height:44px;padding:0;border:none;background:none;cursor:pointer;position:relative;border-radius:8px}
+.menu-btn span{position:absolute;left:12px;right:12px;height:2px;background:var(--fg);border-radius:2px;transition:transform .25s,opacity .2s,top .25s}
+.menu-btn span:nth-child(1){top:15px}.menu-btn span:nth-child(2){top:21px}.menu-btn span:nth-child(3){top:27px}
+header.open .menu-btn span:nth-child(1){top:21px;transform:rotate(45deg)}
+header.open .menu-btn span:nth-child(2){opacity:0}
+header.open .menu-btn span:nth-child(3){top:21px;transform:rotate(-45deg)}
+.scrim{display:none}
+@media (max-width:760px){
+  .menu-btn{display:block}
+  header nav{position:absolute;left:0;right:0;top:100%;flex-direction:column;align-items:stretch;gap:0;padding:8px 12px 14px;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 12px 24px rgba(0,0,0,.08);transform:translateY(-8px);opacity:0;visibility:hidden;transition:transform .2s,opacity .2s,visibility .2s}
+  header.open nav{transform:none;opacity:1;visibility:visible}
+  header nav button{padding:13px 12px;font-size:15px}
+  header nav button.active{background:var(--card)}
+  header nav button.cta{margin:8px 0 0;text-align:center}
+  header.open ~ .scrim{display:block;position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.25)}
+}
+/* ===== Layout ===== */
+main{padding:24px 20px 48px;max-width:1100px;margin:0 auto}
+h2{font-size:18px;font-weight:700;margin:0 0 14px;letter-spacing:-.01em}
+.sec{font-size:15px!important;margin:32px 0 14px!important}
+.muted{color:var(--muted);font-size:12px}
+/* ===== Grid: 4 kolom desktop, 2 kolom mobile ===== */
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 24px}
+@media (max-width:640px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px}main{padding:18px 16px 40px}.bar{padding:0 16px}}
+.card{cursor:pointer;font-size:12px;outline:none}
+.card b{display:block;margin-top:14px;font-size:13px;font-weight:600;line-height:1.35;max-height:2.7em;overflow:hidden}
+.card .muted{margin-top:3px}
+/* ===== Sampul 3D ===== */
+.b3{perspective:900px;padding:6px 10px 10px 0}
+.b3-in{position:relative;transform-style:preserve-3d;transform-origin:left center;transform:rotateY(22deg);transition:transform .45s cubic-bezier(.2,.7,.2,1),filter .45s;filter:drop-shadow(10px 14px 10px rgba(0,0,0,.22))}
+.b3-in img{display:block;width:100%;height:auto;aspect-ratio:auto 2/3;background:var(--card);border-radius:2px 5px 5px 2px}
+.b3-in::before{content:"";position:absolute;left:0;top:0;width:14px;height:100%;transform-origin:left center;transform:rotateY(90deg);background:linear-gradient(90deg,#2b2b2b,#555 50%,#2b2b2b);border-radius:2px 0 0 2px}
+.b3-in::after{content:"";position:absolute;inset:0;border-radius:2px 5px 5px 2px;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.28) 0,rgba(255,255,255,.18) 3%,rgba(0,0,0,0) 8%,rgba(255,255,255,.08) 55%,rgba(0,0,0,.06) 100%)}
+.card:hover .b3-in,.card:focus-visible .b3-in,.b3:hover .b3-in{transform:rotateY(4deg) translateY(-8px) scale(1.03);filter:drop-shadow(6px 20px 14px rgba(0,0,0,.3))}
+.card:focus-visible b{text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.b3-in{transition:none}}
+/* ===== Detail ===== */
+.detail{display:flex;gap:36px;align-items:flex-start;margin-top:16px}
+.detail .b3{width:240px;flex:none}
+.detail .info{flex:1;min-width:0}
+.detail .info h2{font-size:24px;line-height:1.25}
+.detail .info p{margin:8px 0;font-size:14px;line-height:1.5}
+@media (max-width:640px){.detail{flex-direction:column;align-items:center;gap:20px}.detail .b3{width:min(220px,70%)}.detail .info{width:100%}.detail .info h2{font-size:20px}}
+.back{margin:0;padding:8px 12px 8px 0;border:none;background:none;color:var(--muted);font-size:14px}
+.back:hover{color:var(--fg)}
+/* ===== Komponen umum ===== */
+table{width:100%;border-collapse:collapse;font-size:13px;display:block;overflow-x:auto}
+td,th{padding:10px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.03em}
+input,select,textarea{font-size:14px;padding:9px 12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:8px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+textarea{width:100%}
+.btn{font-size:14px;background:var(--fg);color:#fff;border:none;padding:10px 16px;cursor:pointer;border-radius:8px;margin:0}
+.btn:hover{background:#333}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.row input{flex:1;min-width:140px}
+.badge{display:inline-block;background:var(--card);padding:4px 10px;border-radius:12px;font-size:12px;margin:2px}
+.box{border:1px solid var(--line);padding:16px;border-radius:12px;margin-bottom:14px}
+a{color:var(--accent)}
+/* ===== Login ===== */
+.login{max-width:420px;margin:0 auto}
+
+/* ===== Reader (halaman baca) ===== */
+  /* Layout utama halaman buku */
+  .book-page-content {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+
+      width: 100%;
+      min-width: 0;
+      gap: 24px;
+  }
+
+  /* Judul berada di atas reader */
+  .book-title {
+      display: block;
+      width: 100%;
+      margin: 0;
+  }
+
+  /* Reader menjadi block, bukan float */
+  .book-wrap {
+      display: block;
+      float: none;
+      clear: both;
+
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+
+      margin: 0 auto;
+      padding: 12px 0;
+
+      box-sizing: border-box;
+      overflow: visible;
+      text-align: center;
+  }
+
+  /* Container buku */
+  .book-wrap .book {
+      position: relative;
+
+      width: min(640px, 100%);
+      height: min(75vh, 750px);
+      min-height: 400px;
+
+      margin: 0 auto;
+      flex-shrink: 1;
+  }
+
+  /* Tombol navigasi */
+  .book-wrap .book-nav-btn {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+
+      margin: 12px 8px;
+      padding: 0;
+
+      border: 1px solid #ddd;
+      border-radius: 50%;
+      background: #fff;
+
+      color: #444;
+      font-size: 22px;
+      cursor: pointer;
+      vertical-align: middle;
+  }
+
+  /* Catatan berada setelah reader */
+  .personal-notes {
+      display: block;
+      float: none;
+      clear: both;
+
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+  }

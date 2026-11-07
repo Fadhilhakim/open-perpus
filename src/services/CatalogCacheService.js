@@ -189,3 +189,15 @@ function serialize(book) {
     cachedAt: cachedAt?.toDate?.().toISOString() ?? null,
   };
 }
+
+// Detail satu buku: cari di snapshot yang sama dengan queryBooks. Buku yang
+// disembunyikan admin (isPublished: false) juga tidak ditemukan di sini —
+// halaman detail harus konsisten dengan katalog.
+export async function getBookById(id) {
+  const snap = await ensureSnapshot();
+  const book = snap.get(id);
+  if (!book) return null;
+  const hidden = await getHiddenIds();
+  if (hidden.has(id)) return null;
+  return serialize(book);
+}

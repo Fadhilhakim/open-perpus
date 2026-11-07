@@ -1,5 +1,5 @@
 import { loadEnvFile } from 'node:process';
-import { createApp } from './src/app.js';
+import app from './src/app.js';
 
 try {
   loadEnvFile();
@@ -9,6 +9,6 @@ try {
 
 const port = Number(process.env.PORT) || 3000;
 
-createApp().listen(port, () => {
+app.listen(port, () => {
   console.log(`Perpustakaan Digital berjalan di http://localhost:${port}`);
 });

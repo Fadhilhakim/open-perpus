@@ -7,11 +7,13 @@ import bookRoutes from './routes/bookRoutes.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(here, '..', 'public');
 
-export function createApp() {
-  const app = express();
-  app.use(express.json());
-  app.use(express.static(publicDir));
-  app.use('/api', authRoutes);
-  app.use('/api', bookRoutes);
-  return app;
-}
+const app = express();
+app.use(express.json());
+app.use(express.static(publicDir));
+app.use('/api', authRoutes);
+app.use('/api', bookRoutes);
+
+// Vercel menjalankan aplikasi ini sebagai satu Serverless Function: ia
+// mengambil handler dari default export. Tanpa baris ini build Vercel gagal
+// dengan "Can't detect handler export shape".
+export default app;

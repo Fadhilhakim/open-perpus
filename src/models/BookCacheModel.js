@@ -12,6 +12,13 @@ export const bookDocId = (category, sourceId) => `${category}_${sourceId}`;
 
 export const isValidCategory = (c) => CATEGORIES.includes(c);
 
+// Id dokumen books_cache: `${category}_${sourceId}`. Source id dari API sumber
+// hanya berisi karakter aman, jadi pola ini cukup untuk menolak input aneh
+// sebelum dipakai sebagai kunci dokumen.
+const BOOK_ID_RE = /^(k13|merdeka|nonteks|stem)_[A-Za-z0-9._-]{1,64}$/;
+
+export const isValidBookId = (id) => BOOK_ID_RE.test(id);
+
 // Field yang berasal dari API sumber (dibandingkan saat sinkronisasi).
 export const SOURCE_FIELDS = [
   'sourceId', 'category', 'title', 'writer', 'publisher', 'level', 'bookClass',

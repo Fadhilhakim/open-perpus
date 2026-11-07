@@ -1,5 +1,5 @@
-import { isValidCategory } from '../models/BookCacheModel.js';
-import { queryBooks, refreshCatalog } from '../services/CatalogCacheService.js';
+import { isValidBookId, isValidCategory } from '../models/BookCacheModel.js';
+import { getBookById, queryBooks, refreshCatalog } from '../services/CatalogCacheService.js';
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 30;
@@ -35,6 +35,27 @@ export async function listBooks(req, res) {
   } catch (err) {
     console.error('[books]', err);
     return res.status(500).json({ error: 'Gagal memuat katalog' });
+  }
+}
+
+// GET /api/books/:id — detail satu buku dari books_cache.
+// Terbuka untuk umum, sama seperti katalog: membaca buku tidak butuh login.
+export async function getBook(req, res) {
+  const { id } = req.params;
+
+  if (!isValidBookId(id)) {
+    return res.status(400).json({ error: 'Id buku tidak valid' });
+  }
+
+  try {
+    const book = await getBookById(id);
+    if (!book) {
+      return res.status(404).json({ error: 'Buku tidak ditemukan' });
+    }
+    return res.json({ book });
+  } catch (err) {
+    console.error('[books/:id]', err);
+    return res.status(500).json({ error: 'Gagal memuat detail buku' });
   }
 }
 

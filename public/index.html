@@ -3,41 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Perpustakaan Digital</title>
-<style>
-  :root{--bg:#fff;--fg:#111;--line:#e5e5e5;--accent:#1a4d8f;--muted:#8a8a8a;--card:#f6f6f6;color-scheme:light;}
-  *{box-sizing:border-box}
-  body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
-  header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:16px 20px;z-index:5;padding-top:calc(16px + env(safe-area-inset-top,0px));}
-  header h1{margin:0 0 12px;font-size:17px;font-weight:600}
-  nav{display:flex;gap:4px;flex-wrap:wrap}
-  nav button{padding:6px 12px;border:none;background:none;color:var(--muted);cursor:pointer;font-size:13px;border-radius:4px}
-  nav button.active{color:var(--fg);font-weight:600}
-  main{padding:20px;max-width:1000px;margin:0 auto}
-  h2{font-size:15px;font-weight:600;margin:0 0 12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:20px}
-  .card{cursor:pointer;font-size:12px}
-  .card img{width:100%;height:150px;object-fit:cover;background:var(--card);border-radius:4px}
-  .card b{display:block;margin-top:8px;font-size:12px;font-weight:500;line-height:1.3em;max-height:3.9em;overflow:hidden}
-  .muted{color:var(--muted);font-size:11px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  td,th{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
-  th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.03em}
-  input,select,textarea,button{font-size:13px;padding:7px 10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:4px}
-  textarea{width:100%}
-  .btn{background:var(--fg);color:#fff;border:none;padding:8px 14px;cursor:pointer;border-radius:4px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-  .badge{display:inline-block;background:var(--card);color:var(--fg);padding:3px 8px;border-radius:10px;font-size:11px;margin:2px}
-  .box{border:1px solid var(--line);padding:14px;border-radius:6px;margin-bottom:12px}
-  a{color:var(--accent)}
- 
-</style>
+<title>perpusta-vibe</title>
+<link rel="stylesheet" href="css/app.css">
+
 </head>
 <body>
-<header>
-  <h1>📚 Perpustakaan Digital</h1>
-  <nav id="nav"></nav>
+<header id="hdr">
+  <div class="bar">
+    <button class="brand" onclick="go('dashboard')" aria-label="perpusta-vibe, ke beranda">perpusta<span>-vibe</span></button>
+    <button class="menu-btn" id="menuBtn" aria-label="Buka menu" aria-expanded="false" aria-controls="nav" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+    <nav id="nav" aria-label="Menu utama"></nav>
+  </div>
 </header>
+<div class="scrim" onclick="toggleMenu(false)"></div>
 <main id="app">Memuat...</main>
 <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-auth-compat.js"></script>
@@ -95,13 +73,23 @@ async function ensure(cat,limit){
   return S.books[cat];
 }
 
+function toggleMenu(force){
+  const h=document.getElementById('hdr');
+  const open=force===undefined?!h.classList.contains('open'):force;
+  h.classList.toggle('open',open);
+  const btn=document.getElementById('menuBtn');
+  btn.setAttribute('aria-expanded',open);
+  btn.setAttribute('aria-label',open?'Tutup menu':'Buka menu');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleMenu(false);});
+window.addEventListener('resize',()=>{if(innerWidth>760)toggleMenu(false);});
 function renderNav(){
   document.getElementById('nav').innerHTML=VIEWS.map(([k,l])=>
     `<button class="${S.view===k?'active':''}" onclick="go('${k}')">${l}</button>`).join('')
     +(ME?`<button onclick="doLogout()">Keluar${ME.role==='admin'?' (admin)':''}</button>`
-         :`<button onclick="goLogin()">Masuk</button>`);
+         :`<button class="cta" onclick="goLogin()">Masuk</button>`);
 }
-function go(v){S.view=v;S.detail=null;render();}
+function go(v){S.view=v;S.detail=null;toggleMenu(false);window.scrollTo(0,0);render();}
 function goLogin(){location.href='/login.html';}
 async function doLogout(){
   const auth=firebase.auth();
@@ -110,11 +98,15 @@ async function doLogout(){
   location.replace('/');
 }
 
+function cover(b){
+  return `<div class="b3"><div class="b3-in"><img src="${esc(b.image)}" alt="Sampul ${esc(b.title)}" loading="lazy" onerror="this.style.visibility='hidden'"></div></div>`;
+}
 function card(b){
-  return `<div class="card" onclick="showDetail('${b._cat}','${b.id}')">
-    <img src="${esc(b.image)}" loading="lazy" onerror="this.style.visibility='hidden'">
+  if(!b.image) return `<div class="card"><b>${esc(b.title)}</b></div>`;
+  return `<div class="card" tabindex="0" role="link" onclick="showDetail('${b._cat}','${b.id}')" onkeydown="if(event.key==='Enter')showDetail('${b._cat}','${b.id}')">
+    ${cover(b)}
     <b>${esc(b.title)}</b>
-    <div class="muted">${CATS[b._cat]||b._cat}${b.level?(' · '+esc(b.level)):''}</div>
+    <div class="muted">${CATS[b._cat]||b._cat}${b.level?(' \u00b7 '+esc(b.level)):''}</div>
   </div>`;
 }
 
@@ -178,7 +170,7 @@ async function renderDashboard(){
   const results=await Promise.all(cats.map(c=>ensure(c,8)));
   let html='<h2>Katalog Terbaru</h2>';
   cats.forEach((c,i)=>{
-    html+=`<h2 style="font-size:14px;border:none;margin-top:16px">${CATS[c]}</h2><div class="grid">${results[i].map(card).join('')||'<p class="muted">Tidak ada data.</p>'}</div>`;
+    html+=`<h2 class="sec">${CATS[c]}</h2><div class="grid">${results[i].map(card).join('')||'<p class="muted">Tidak ada data.</p>'}</div>`;
   });
   document.getElementById('app').innerHTML=html;
 }
@@ -206,10 +198,10 @@ function renderDetailView(){
   const b=S.detail;
   if(!b){document.getElementById('app').innerHTML='<p>Buku tidak ditemukan.</p>';return;}
   document.getElementById('app').innerHTML=`
-    <button onclick="go('katalog')">&larr; Kembali</button>
-    <div class="box" style="display:flex;gap:16px;flex-wrap:wrap">
-      <img src="${esc(b.image)}" style="width:160px;height:220px;object-fit:cover" onerror="this.style.visibility='hidden'">
-      <div style="flex:1;min-width:220px">
+    <button class="back" onclick="go('katalog')">&larr; Kembali</button>
+    <div class="detail">
+      ${cover(b)}
+      <div class="info">
         <h2>${esc(b.title)}</h2>
         <p class="muted">${CATS[b._cat]} ${b.level?('· Jenjang: '+esc(b.level)):''} ${b.class?('· Kelas: '+esc(b.class)):''}</p>
         <p><b>Penulis:</b> ${esc(b.writer)||'-'}</p>
